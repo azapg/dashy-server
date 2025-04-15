@@ -1,8 +1,10 @@
 import WebSocket, { WebSocketServer } from "ws";
 import {ThingsBoardClient} from "./thingsboard/client.ts";
 import {Events} from "./thingsboard/types.ts";
+import https from 'https';
 
 import 'dotenv/config';
+import * as fs from "node:fs";
 
 type TemperatureDataPoint = {
   timestamp: number;
@@ -82,7 +84,32 @@ client.on(Events.MESSAGE, (message) => {
 //     oldClient.removeAllListeners();
 //   }, 5000);
 
-const wss = new WebSocketServer({ port: 4000 });
+const SERVER_CERTIFICATE_PATH = process.env.SERVER_CERTIFICATE_PATH;
+const PRIVATE_KEY_PATH = process.env.PRIVATE_KEY_PATH;
+const CA_BUNDLE_PATH = process.env.CA_BUNDLE_PATH;
+
+if(!PRIVATE_KEY_PATH) {
+  console.error("PRIVATE_KEY_PATH is not defined in environment");
+  process.exit(1)
+}
+
+if(!CA_BUNDLE_PATH) {
+  console.error("CA_BUNDLE_PATH is not defined in environment");
+  process.exit(1)
+
+}
+if(!SERVER_CERTIFICATE_PATH) {
+  console.error("SERVER_CERTIFICATE_PATH is not defined in environment");
+  process.exit(1)
+}
+
+const server = https.createServer({
+  cert: fs.readFileSync(SERVER_CERTIFICATE_PATH),
+  key: fs.readFileSync(PRIVATE_KEY_PATH),
+  ca: fs.readFileSync(CA_BUNDLE_PATH)
+});
+
+const wss = new WebSocketServer({ port: 4000, server });
 console.log("WebSocket server started on port 4000");
 
 wss.on("connection", (ws) => {
