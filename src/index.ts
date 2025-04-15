@@ -106,11 +106,14 @@ if(!SERVER_CERTIFICATE_PATH) {
 const server = https.createServer({
   cert: fs.readFileSync(SERVER_CERTIFICATE_PATH),
   key: fs.readFileSync(PRIVATE_KEY_PATH),
-  ca: fs.readFileSync(CA_BUNDLE_PATH)
+  ca: fs.readFileSync(CA_BUNDLE_PATH),
 });
 
-const wss = new WebSocketServer({ port: 4000, server });
-console.log("WebSocket server started on port 4000");
+const wss = new WebSocketServer({ server });
+
+server.listen(443, () => {
+  console.log('HTTPS & WSS server running on port 443');
+});
 
 wss.on("connection", (ws) => {
   connectedClients.add(ws);
