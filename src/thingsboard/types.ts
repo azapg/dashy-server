@@ -20,3 +20,7 @@ export interface Command {
 export interface CommandMessage {
   cmds: Command[];
 }
+
+export enum Events {
+  MESSAGE="EVENT_MESSAGE"
+}
