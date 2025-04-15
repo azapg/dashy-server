@@ -4,6 +4,9 @@ import EventEmitter from 'node:events';
 import {MessageFactory} from "./message-factory.ts";
 import axios from 'axios'
 
+const TOKEN_EXPIRATION_SECONDS = 9000;
+const REFRESH_TOKEN_EXPIRATION_SECONDS = 604800;
+
 export type UsernamePasswordCredentials = {
   username: string;
   password: string;
@@ -81,6 +84,10 @@ export class ThingsBoardClient {
         throw new BadCredentialsError("ThingsBoard WebSocket connection closed due to invalid credentials!")
       }
     })
+
+    setInterval(async () => {
+      await this.refreshExpiredToken()
+    }, (TOKEN_EXPIRATION_SECONDS - 60) * 1000);
   }
 
   isConnected(): boolean {
@@ -151,5 +158,39 @@ export class ThingsBoardClient {
 
     this.token = response.data.token;
     this.refreshToken = response.data.refreshToken;
+  }
+
+  private async refreshExpiredToken() {
+    if(!this.token || !this.refreshToken) {
+      throw new Error("Cannot refresh expired token because this doesn't exist!");
+    }
+
+
+    const data = {
+      refreshToken: this.refreshToken,
+    }
+
+    let config = {
+      method: 'post',
+      maxBodyLength: Infinity,
+      url: `${this.THINGSBOARD_REST_API_URL}/api/auth/token`,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Authorization': `Bearer ${this.token}`
+      },
+      data: data
+    };
+
+    const response = await axios.request(config);
+
+    if(response.status !== 200) {
+      throw new Error(`Couldn't retrieve token: ${response.data.message}`);
+    }
+
+    this.token = response.data.token;
+    this.refreshToken = response.data.refreshToken;
+
+    console.log('Refreshed token')
   }
 }

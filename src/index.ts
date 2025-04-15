@@ -95,11 +95,6 @@ wss.on("connection", (ws) => {
     });
   }
 
-  ws.on('message', (message) => {
-    // I don't know what messages could Dashy send
-    console.log("Received message from oldClient:", message.toString());
-  });
-
   ws.on('close', () => {
     connectedClients.delete(ws);
   });
