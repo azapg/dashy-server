@@ -1,6 +1,8 @@
 import WebSocket, { WebSocketServer } from "ws";
+import {ThingsBoardClient} from "./thingsboard/client.ts";
+import {Events} from "./thingsboard/types.ts";
+
 import 'dotenv/config';
-import { MessageFactory } from "./thingsboard/message-factory.ts";
 
 type TemperatureDataPoint = {
   timestamp: number;
@@ -11,39 +13,42 @@ type TemperatureDataPoint = {
 const dataStack: TemperatureDataPoint[] = [];
 const connectedClients = new Set<WebSocket>();
 
-const wsUrl = process.env.THINGSBOARD_WEBSOCKET_URL;
-if (!wsUrl) {
+const THINGSBOARD_WEBSOCKET_URL = process.env.THINGSBOARD_WEBSOCKET_URL;
+const PUBLIC_USERNAME = process.env.PUBLIC_USERNAME;
+const PUBLIC_PASSWORD = process.env.PUBLIC_PASSWORD;
+const PUBLIC_ENTITY_ID = process.env.PUBLIC_ENTITY_ID;
+
+if (!THINGSBOARD_WEBSOCKET_URL) {
   console.error("THINGSBOARD_WEBSOCKET_URL is not defined in environment");
   process.exit(1);
 }
 
-const client = new WebSocket(wsUrl);
-client.on('open', () => {
-  console.log("Connected to ThingsBoard WebSocket");
-  const token = process.env.PUBLIC_USER_TOKEN;
-  const entityId = process.env.PUBLIC_ENTITY_ID;
-  if (!token) {
-    console.error("TOKEN is not defined in environment");
-    process.exit(1);
-  }
-  if (!entityId) {
-    console.error("entityId is not defined in environment");
-    process.exit(1);
-  }
+if(!PUBLIC_USERNAME || !PUBLIC_PASSWORD) {
+  console.error("Public credentials variables are missing in environment");
+  process.exit(1);
+}
 
-  const authMessage = JSON.stringify(MessageFactory.createAuthMessage(token, 0));
-  const telemetryCommand = MessageFactory.createTelemetryCommand(entityId);
-  const commandMessage = JSON.stringify(
-    MessageFactory.createCommandMessage(telemetryCommand)
-  );
+if(!PUBLIC_ENTITY_ID) {
+  console.error("PUBLIC_ENTITY_ID is not defined in environment");
+  process.exit(1);
+}
 
-  client.send(authMessage);
-  client.send(commandMessage);
+const client = new ThingsBoardClient();
+
+await client.setup(THINGSBOARD_WEBSOCKET_URL, {
+  username: PUBLIC_USERNAME,
+  password: PUBLIC_PASSWORD,
+})
+
+// For testing, we have to wait just a little so the server responds to the setup
+await new Promise((resolve) => {
+  setInterval(resolve, 1000)
 });
 
-client.on('message', (message) => {
-  const response = JSON.parse(message.toString());
+client.subscribe(PUBLIC_ENTITY_ID)
 
+client.on(Events.MESSAGE, (message) => {
+  const response = message.content;
   if (!response.subscriptionId) {
     return;
   }
@@ -63,19 +68,19 @@ client.on('message', (message) => {
   } catch (error) {
     console.error("Error processing ThingsBoard message:", error);
   }
-});
+})
 
-client.on('error', (error) => {
-  console.error("ThingsBoard WebSocket error:", error);
-});
-
-client.on('close', () => {
-  console.log("ThingsBoard WebSocket connection closed");
-  setTimeout(() => {
-    console.log("Attempting to reconnect to ThingsBoard...");
-    client.removeAllListeners();
-  }, 5000);
-});
+// TODO: These events should be managed by the ThingsBoardClient class
+// client.on('error', (error) => {
+//   console.error("ThingsBoard WebSocket error:", error);
+// });
+//
+// client.on('close', () => {
+//   console.log("ThingsBoard WebSocket connection closed");
+//   setTimeout(() => {
+//     console.log("Attempting to reconnect to ThingsBoard...");
+//     oldClient.removeAllListeners();
+//   }, 5000);
 
 const wss = new WebSocketServer({ port: 4000 });
 console.log("WebSocket server started on port 4000");
@@ -92,7 +97,7 @@ wss.on("connection", (ws) => {
 
   ws.on('message', (message) => {
     // I don't know what messages could Dashy send
-    console.log("Received message from client:", message.toString());
+    console.log("Received message from oldClient:", message.toString());
   });
 
   ws.on('close', () => {
