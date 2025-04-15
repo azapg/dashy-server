@@ -87,6 +87,13 @@ export class ThingsBoardClient {
     return this.connected
   }
 
+  subscribe(entityId: string) {
+    const subscriptionCommand = MessageFactory.createTelemetryCommand(entityId);
+    const subscriptionMessage = MessageFactory.createCommandMessage(subscriptionCommand);
+
+    this.send(subscriptionMessage);
+  }
+
   on(event: Events, listener: (...args: any[]) => any) {
     this.eventEmitter.on(event, listener);
   }
