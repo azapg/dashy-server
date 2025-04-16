@@ -107,6 +107,8 @@ const server = https.createServer({
   cert: fs.readFileSync(SERVER_CERTIFICATE_PATH),
   key: fs.readFileSync(PRIVATE_KEY_PATH),
   ca: fs.readFileSync(CA_BUNDLE_PATH),
+  requestCert: false,
+  rejectUnauthorized: false,
 });
 
 const wss = new WebSocketServer({ server });
