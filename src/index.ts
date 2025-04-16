@@ -86,18 +86,12 @@ client.on(Events.MESSAGE, (message) => {
 
 const SERVER_CERTIFICATE_PATH = process.env.SERVER_CERTIFICATE_PATH;
 const PRIVATE_KEY_PATH = process.env.PRIVATE_KEY_PATH;
-const CA_BUNDLE_PATH = process.env.CA_BUNDLE_PATH;
 
 if(!PRIVATE_KEY_PATH) {
   console.error("PRIVATE_KEY_PATH is not defined in environment");
   process.exit(1)
 }
 
-if(!CA_BUNDLE_PATH) {
-  console.error("CA_BUNDLE_PATH is not defined in environment");
-  process.exit(1)
-
-}
 if(!SERVER_CERTIFICATE_PATH) {
   console.error("SERVER_CERTIFICATE_PATH is not defined in environment");
   process.exit(1)
@@ -106,9 +100,6 @@ if(!SERVER_CERTIFICATE_PATH) {
 const server = https.createServer({
   cert: fs.readFileSync(SERVER_CERTIFICATE_PATH),
   key: fs.readFileSync(PRIVATE_KEY_PATH),
-  ca: fs.readFileSync(CA_BUNDLE_PATH),
-  requestCert: false,
-  rejectUnauthorized: false,
 });
 
 const wss = new WebSocketServer({ server });
